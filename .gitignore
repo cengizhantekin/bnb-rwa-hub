@@ -1,0 +1,38 @@
+# Secrets and local configuration
+.env
+.env.*
+config.php
+config.local.php
+secrets.php
+
+# Private directories
+_private/
+private/
+
+# Dependencies
+vendor/
+node_modules/
+
+# Runtime and logs
+*.log
+logs/
+cache/
+tmp/
+temp/
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local DevEx notes
+DEVEX_NOTES.md
+
+# Local backups
+*.bak
+*.backup
+*.old
+
+# Temporary diagnostics
+path-test.php
