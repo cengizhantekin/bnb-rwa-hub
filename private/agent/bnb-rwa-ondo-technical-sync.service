@@ -8,6 +8,7 @@ Type=oneshot
 User=root
 WorkingDirectory=/home/bhub.tm.biz.tr/private/agent
 ExecStart=/usr/bin/python3 /home/bhub.tm.biz.tr/private/agent/rwa-technical-scan.py --sync-ondo-batch --batch-size=30
+ExecStartPost=/usr/bin/php /home/bhub.tm.biz.tr/private/agent/sync-technical-db.php
 Environment=PYTHONUNBUFFERED=1
 UMask=0077
 Nice=10

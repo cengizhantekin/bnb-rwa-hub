@@ -25,7 +25,18 @@ Start from `private/config.example.php` and supply real credentials only on the 
 
 Multiple PHP, Python and systemd scripts refer to the existing VPS installation path `/home/bhub.tm.biz.tr/...`. Those references must be parameterized or updated for a different server. Do not change paths on a running VPS without an audited migration.
 
-This source export includes some service/timer templates under `private/agent/`, but **not the full current `/etc/systemd/system/` set**. In particular, verify the live `bnb-rwa-agent`, `bnb-rwa-catalog-sync` and `bnb-rwa-chat-cleanup` definitions before constructing a fresh deployment. Installed `systemd` units and timer status, not just repository copies, determine the active execution paths.
+### systemd definitions
+
+The 13 `.service` / `.timer` source copies under `private/agent/` reflect the inspected VPS configuration of 2026-10-10, with these limitations:
+
+- The `bnb-rwa-agent.service` file is a **sanitized example**, not a complete drop-in unit. Its environment/credential directive was deliberately removed during export. Restore the correct values securely on the target host before using it; do not commit real API credentials.
+- The checked-in `bnb-rwa-technical-sync.service` and `bnb-rwa-ondo-technical-sync.service` include `ExecStartPost` to run `sync-technical-db.php` after their scanner. They retain the non-sensitive `PYTHONUNBUFFERED=1` environment setting from the earlier repository version. The export omitted environment directives, so compare those with the installed units if exact parity is needed.
+- `bnb-rwa-catalog-sync` runs `run-catalog-sync.py`, which executes the active `public_html/sync-tokens.php`. The older `private/agent/sync-tokens.php` is intentionally excluded.
+- `bnb-rwa-tsla-sync.timer` was **disabled** on the VPS during the last status check. The presence of its unit file in Git does **not** mean it should be enabled.
+- Experimental Pieverse probe units were archived and are intentionally not shipped in this repository.
+- The deployed unit files under `/etc/systemd/system/`, their local overrides, and actual enabled/active status are authoritative. Source copies are for reference, review, and controlled deployment.
+
+When setting up a new host, inspect unit contents and secrets, copy only selected reviewed units into `/etc/systemd/system/`, run `systemd-analyze verify` where available, and then `systemctl daemon-reload`. Enable or start services **only** according to the intended schedule. Never blindly enable all timers from this directory. For changes on the existing VPS, back up the live units and verify differences before replacing them.
 
 ### Deployment verification
 

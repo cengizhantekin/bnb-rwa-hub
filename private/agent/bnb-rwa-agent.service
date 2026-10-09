@@ -1,0 +1,30 @@
+[Unit]
+Description=BNB RWA Hub local agent
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/home/bhub.tm.biz.tr/private/agent/RwaHubAgent/app/agent
+# Runtime environment directives intentionally omitted from source control.
+# Restore required local environment settings before starting this unit.
+ExecStart=/usr/local/bin/bag dev
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectKernelTunables=true
+ProtectControlGroups=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

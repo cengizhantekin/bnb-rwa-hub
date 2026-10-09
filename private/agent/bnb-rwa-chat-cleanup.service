@@ -1,0 +1,8 @@
+[Unit]
+Description=BNB RWA Hub expired conversation cleanup
+After=mariadb.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/php /home/bhub.tm.biz.tr/private/agent/chat-maintenance.php --cleanup
+UMask=0077
+NoNewPrivileges=true
