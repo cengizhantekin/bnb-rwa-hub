@@ -1,38 +1,79 @@
-# Secrets and local configuration
+# BNB RWA Hub - source repository
+# Keep application source under private/agent versioned.
+# Never commit real credentials, runtime state, backups, or VPS snapshots.
+
+# Credentials and machine-specific configuration
 .env
 .env.*
+!.env.example
+!.env.sample
 config.php
 config.local.php
 secrets.php
-
-# Private directories
+credentials.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+.npmrc
+.pypirc
+.ssh/
+.aws/
+.studio/
 _private/
-private/
 
-# Dependencies
-vendor/
+# Dependencies and build outputs
 node_modules/
+vendor/
+dist/
+build/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.tsbuildinfo
 
-# Runtime and logs
+# Runtime data (not source code)
+private/agent/technical-data/
+private/agent/rwa-cache/
+private/agent/quote-runtime/
+private/agent/pieverse-probe-data/
 *.log
 logs/
 cache/
 tmp/
 temp/
+*.pid
+*.sqlite
+*.sqlite3
+*.db
 
-# IDE / OS files
+# Backups, diagnostics, exported databases
+archive/
+backup/
+backups/
+*.bak
+*.backup
+*.old
+*.diagnostic-backup
+*.regex-backup
+*_bck.*
+*.sql
+*.sql.gz
+*.tar
+*.tar.gz
+*.zip
+path-test.php
+
+# Local IDE / operating system files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+*.swp
+*~
 
-# Local DevEx notes
+# DevEx history is maintained in its separate repository
 DEVEX_NOTES.md
-
-# Local backups
-*.bak
-*.backup
-*.old
-
-# Temporary diagnostics
-path-test.php
