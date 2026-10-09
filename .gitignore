@@ -77,3 +77,9 @@ Thumbs.db
 
 # DevEx history is maintained in its separate repository
 DEVEX_NOTES.md
+
+# Live Studio configuration can contain wallet metadata, consent and key hashes
+studio.toml
+
+# Unused older catalogue implementation retained only on VPS
+private/agent/sync-tokens.php
