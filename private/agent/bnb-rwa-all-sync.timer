@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh all active BSC token snapshots after completion
+
+[Timer]
+OnActiveSec=2min
+OnUnitInactiveSec=2min
+AccuracySec=5s
+Unit=bnb-rwa-all-sync.service
+
+[Install]
+WantedBy=timers.target

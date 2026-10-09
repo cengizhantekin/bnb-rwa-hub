@@ -1,0 +1,16 @@
+/* About topic links on the Ask Hubble page and Swap chooser. */
+.about-guide-link, .swap-guide-link a {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: #1767ae; font-size: 15px; font-weight: 700; line-height: 1.5;
+  text-decoration: none; text-underline-offset: 3px;
+}
+.about-guide-link:hover, .swap-guide-link a:hover { text-decoration: underline; color: #104e87; }
+.about-guide-link:focus-visible, .swap-guide-link a:focus-visible { outline: 2px solid #5794c9; outline-offset: 4px; border-radius: 3px; }
+.swap-guide-link { text-align: center; margin: 17px 0 2px; }
+
+/* Hubble's composer is sticky at the bottom; keep its explanation link beside the field label. */
+.composer-guide-row {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px 14px;margin-bottom:7px;}
+.composer-guide-row label {margin-bottom:0;}
+.composer-guide-row .about-guide-link {margin-left:auto;}
+.about-info-icon {display:block;flex:none;width:17px;height:17px;}
+@media (max-width:420px){.composer-guide-row .about-guide-link,.swap-guide-link a{font-size:14px;}}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh TSLA snapshots every two minutes after completion
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=2min
+AccuracySec=5s
+Unit=bnb-rwa-tsla-sync.service
+
+[Install]
+WantedBy=timers.target

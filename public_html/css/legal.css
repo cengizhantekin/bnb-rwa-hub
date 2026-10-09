@@ -1,0 +1,18 @@
+.legal-page{max-width:920px}
+.legal-page .intro{margin-bottom:18px}
+.legal-page .intro p{max-width:760px}
+.legal-card{background:#fff;border:1px solid #dce2eb;border-radius:12px;padding:22px;margin:16px 0}
+.legal-card h2{font-size:20px;margin:0 0 12px;color:#203b60}
+.legal-card h3{font-size:16px;margin:20px 0 8px;color:#294a78}
+.legal-card p,.legal-card li{line-height:1.65;color:#42546c}
+.legal-card ul{padding-left:22px}
+.legal-card li+li{margin-top:7px}
+.legal-effective{font-size:13px;color:#6a7789;margin-top:6px}
+.legal-callout{border-left:4px solid #d69a2d;background:#fff8e8;padding:13px 15px;border-radius:8px;color:#725319;line-height:1.55}
+.site-footer{border-top:1px solid #dce2eb;padding-top:16px;margin-top:32px}
+.site-footer>p{margin:0 0 10px;color:#657286;font-size:12px;line-height:1.55}
+.legal-links{display:flex;flex-wrap:wrap;gap:7px 14px;margin:0;font-size:12px}
+.legal-links a{color:#67758a;text-decoration:none}
+.legal-links a:hover{color:#2259ac;text-decoration:underline}
+.legal-links a[aria-current="page"]{color:#294a78;font-weight:700}
+@media(max-width:650px){.legal-card{padding:17px}.legal-links{gap:6px 12px}}

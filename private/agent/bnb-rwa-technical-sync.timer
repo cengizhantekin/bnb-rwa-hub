@@ -1,0 +1,12 @@
+[Unit]
+Description=BNB RWA Hub daily closed-candle technical refresh schedule
+
+[Timer]
+OnCalendar=*-*-* 00:15:00 UTC
+RandomizedDelaySec=2min
+AccuracySec=10s
+Persistent=true
+Unit=bnb-rwa-technical-sync.service
+
+[Install]
+WantedBy=timers.target

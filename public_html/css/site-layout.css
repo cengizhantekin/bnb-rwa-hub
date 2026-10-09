@@ -1,0 +1,50 @@
+/* Shared horizontal alignment for page content, header, and footer. */
+:root {
+  --hub-layout-max: 1180px;
+  --hub-layout-gutter: 24px;
+}
+
+/* Prevent a horizontal jump when short Dashboard panels hide the scrollbar. */
+html {
+  scrollbar-gutter: stable;
+}
+
+.site-header .header-inner,
+main.shell {
+  width: 100%;
+  max-width: var(--hub-layout-max);
+  margin-inline: auto;
+  padding-inline: var(--hub-layout-gutter);
+}
+
+/* Five equal-width desktop navigation slots. */
+.site-header .site-nav {
+  width: 100%;
+  max-width: none;
+}
+
+/* All page types use the same outer column. */
+main.shell.about-shell,
+main.shell.legal-page {
+  width: 100%;
+  max-width: var(--hub-layout-max);
+}
+
+/* Legal pages use the same inner edges as the header, main content and
+   footer. Earlier legal.css limited these sections to 920px. */
+main.legal-page > .intro,
+main.legal-page > .legal-card,
+main.legal-page > .legal-callout {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+}
+
+/* Allow the introductory copy to use the full legal page width as well. */
+main.legal-page > .intro p {
+  max-width: none;
+}
+
+@media (max-width: 650px) {
+  :root { --hub-layout-gutter: 16px; }
+}

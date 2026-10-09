@@ -1,0 +1,18 @@
+<?php
+declare(strict_types=1);
+header('Content-Type: text/html; charset=utf-8');
+header('Cache-Control: no-store');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: same-origin');
+header("Content-Security-Policy: default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'");
+?>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BNB RWA Hub · Cookie Policy</title><link rel="stylesheet" href="css/rwa-chat.css?v=20261007-nav"><link rel="stylesheet" href="css/legal.css?v=20261008-legal">
+<link rel="stylesheet" href="css/site-nav-assets.css?v=20261009-sharednav1"><script src="js/site-nav.js?v=20261007-nav" defer></script><link rel="stylesheet" href="css/about-context-links.css?v=20261009-links-v2">
+<link rel="stylesheet" href="css/site-layout.css?v=20261010-layout2"></head><body><?php require __DIR__ . '/includes/site-header.php'; ?><main class="shell legal-page"><section class="intro"><h1>Cookie Policy</h1><p>How essential cookies and browser storage support conversation continuity and transaction recovery.</p><div class="legal-effective">Effective date: October 8, 2026</div></section>
+<section class="legal-card"><h2>1. Essential session cookie</h2><p>BNB RWA Hub currently uses an essential first-party cookie named <code>__Host-rwa_chat</code> to associate this browser with its saved Hubble conversation. The cookie is configured as Secure, HttpOnly and SameSite=Lax and is designed with a rolling seven-day lifetime after activity.</p><p>The cookie contains a random session token rather than the text of your conversation. The corresponding conversation is stored on the server.</p></section>
+<section class="legal-card"><h2>2. Browser storage</h2><p>The trading interface may use local or session browser storage for operational state such as selected wallet/provider information, cross-tab coordination and recovery of submitted, pending or uncertain approval/purchase/sale transactions. This helps prevent accidental duplicate wallet requests and allows status checks after a reload.</p></section>
+<section class="legal-card"><h2>3. No advertising cookies</h2><p>The current site implementation does not intentionally use advertising, marketing or behavioural-tracking cookies. If analytics or additional non-essential cookies are introduced later, this policy should be updated and any consent mechanism required by applicable law should be added.</p></section>
+<section class="legal-card"><h2>4. What happens if you block or clear storage</h2><p>Blocking the essential conversation cookie can prevent conversation restoration. Clearing the cookie can break access to the current saved conversation and cause a new session to be created.</p><p>Clearing browser storage can remove transaction-recovery information from this browser. It does not cancel a transaction that was already submitted to BNB Smart Chain and does not erase public blockchain records.</p></section>
+<section class="legal-card"><h2>5. Managing browser data</h2><p>You can use your browser settings to inspect, block or delete cookies and site storage. Because the current cookie and local-storage uses are tied to core functionality, disabling them may reduce or break conversation and transaction-recovery features.</p></section>
+<section class="legal-card"><h2>6. Changes</h2><p>This policy may be updated if the project adds analytics, authentication, new wallet integrations or other browser-storage uses.</p></section>
+<?php require __DIR__ . '/includes/site-footer.php'; ?></main><?php require __DIR__ . '/includes/site-swap-chooser.php'; ?></body></html>

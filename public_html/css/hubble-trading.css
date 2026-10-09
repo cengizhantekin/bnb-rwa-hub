@@ -1,0 +1,28 @@
+#hubble-trade-dialog{box-sizing:border-box;width:min(900px,calc(100vw - 24px));max-height:calc(100dvh - 36px);padding:24px;border:1px solid #bed0e3;border-radius:20px;background:#f6f9fd;color:#17324d;overflow:auto;box-shadow:0 24px 90px #18345440}#hubble-trade-dialog::backdrop{background:#18345466}.trade-dialog-header{display:flex;align-items:center;justify-content:space-between;gap:18px;position:sticky;top:-24px;background:#f6f9fd;padding:16px 0;z-index:2;border-bottom:1px solid #dbe5ef}.trade-dialog-header h2{margin:0;font-size:24px;color:#1767ae}.trade-dialog-header button{flex:none}#hubble-trade-notice:empty{display:none}#hubble-trade-dialog h1{font-size:23px;color:#1767ae}#hubble-trade-dialog .buy-panel{padding:18px;margin:16px 0}#hubble-trade-dialog .intro>p{margin-top:4px}#hubble-trade-dialog .approval-panel{padding:20px;border:1px solid #bdd2e7;border-radius:14px;background:white;margin:16px 0;overflow-wrap:anywhere}#hubble-trade-dialog .approval-panel h2{color:#1767ae}#hubble-trade-dialog [hidden]{display:none!important}#hubble-trade-dialog .meta{font-size:12px;line-height:1.6}.trade-diagnostics{font-size:13px;color:#526a80;margin:16px 0}.trade-diagnostics summary{cursor:pointer;font-weight:600}#hubble-trade-dialog dl dd{overflow-wrap:anywhere}#hubble-trade-dialog .trade-review{scroll-margin-top:75px}@media(max-width:600px){#hubble-trade-dialog{padding:16px;width:calc(100vw - 12px);max-height:calc(100dvh - 12px)}.trade-dialog-header{top:-16px}.trade-dialog-header h2{font-size:21px}}
+
+#hubble-trade-dialog .trade-values{display:grid;grid-template-columns:minmax(130px,1fr) minmax(0,1fr);gap:12px 20px;background:#f5f9fe;border-radius:12px;padding:18px;margin:18px 0}#hubble-trade-dialog .trade-values dt{color:#536b81;font-size:14px;margin:0}#hubble-trade-dialog .trade-values dd{font-weight:700;font-size:18px;margin:0;color:#1767ae;text-align:right}#hubble-trade-dialog .trade-values dd~dt{border-top:1px solid #dce8f3;padding-top:10px}#hubble-trade-dialog .trade-values dd~dt+dd{border-top:1px solid #dce8f3;padding-top:10px}#hubble-trade-dialog .trade-diagnostics p{overflow-wrap:anywhere}#hubble-trade-dialog .intro h1,#hubble-sale-root>h1,#hubble-approval-root>h1{display:none}#hubble-trade-dialog button{margin-top:8px}#hubble-trade-dialog [data-trade-id=wallet],#hubble-trade-dialog [data-trade-id=wallet-state]{font-size:13px;overflow-wrap:anywhere}#hubble-trade-dialog [data-trade-id=status]:empty{display:none}@media(max-width:480px){#hubble-trade-dialog .trade-values{grid-template-columns:1fr;gap:6px;padding:14px}#hubble-trade-dialog .trade-values dd{text-align:left;margin-bottom:8px}#hubble-trade-dialog .trade-values dd~dt+dd{border-top:0;padding-top:0}}
+
+.trade-header-actions{display:flex;gap:8px;align-items:center}#hubble-trade-dialog [data-trade-id=quote-status]:empty{display:none}#hubble-trade-dialog .quote-provider{margin:12px 0}#hubble-trade-dialog .trade-header-actions button{margin-top:0}@media(max-width:480px){.trade-dialog-header{gap:8px}.trade-dialog-header h2{font-size:19px}.trade-header-actions{gap:6px}.trade-header-actions button{padding:10px;font-size:12px}}
+
+/* Semantic trade status colors: success, errors, and active waiting only. */
+#hubble-trade-dialog .trade-status-success,
+#hubble-trade-dialog .trade-status-error,
+#hubble-trade-dialog .trade-status-warning,
+#hubble-trade-dialog .trade-status-wait{
+  padding:10px 12px;
+  border:1px solid transparent;
+  border-radius:10px;
+  line-height:1.45;
+}
+#hubble-trade-dialog .trade-status-success{color:#17613a;background:#edf8f1;border-color:#b7ddc5}
+#hubble-trade-dialog .trade-status-error{color:#9a2e2e;background:#fff1f1;border-color:#edbcbc}
+#hubble-trade-dialog .trade-status-warning{color:#7b5100;background:#fff7e6;border-color:#e8c978}
+#hubble-trade-dialog .trade-status-wait{color:#865400;background:#fff6e3;border-color:#edcf91}
+#hubble-buy-root [data-trade-id=quote-status]{margin:10px 0 12px;scroll-margin-top:78px}
+#hubble-buy-root .purchase-guidance{margin:0 0 14px}
+#hubble-buy-root .purchase-guidance .meta{margin:7px 0 0}
+
+/* Generic purchase token autocomplete */
+.token-picker{margin-top:16px;min-width:0}.token-combobox{position:relative;min-width:0}.token-combobox input{box-sizing:border-box;width:100%;min-width:0;border:1px solid #b8c4d5;border-radius:9px;padding:11px 12px;font:inherit;background:#fff;color:#182639}
+.token-combobox input:focus{outline:2px solid rgba(34,89,172,.18);border-color:#5d8bce}.token-listbox{box-sizing:border-box;position:absolute;z-index:20;left:0;right:0;top:calc(100% + 5px);max-width:100%;max-height:260px;overflow-y:auto;overflow-x:hidden;border:1px solid #cbd6e5;border-radius:10px;background:#fff;box-shadow:0 12px 30px rgba(24,38,57,.16);padding:5px}
+.token-listbox[hidden]{display:none}.token-option{box-sizing:border-box;width:100%;min-width:0;display:flex;align-items:baseline;justify-content:flex-start;gap:8px;text-align:left;border:0;border-radius:7px;background:#fff;color:#203a5f;padding:9px 10px;font-weight:600;overflow:hidden}.token-option:hover,.token-option:focus{background:#edf4ff;color:#174e9e}.token-option-ticker{flex:0 0 auto;font-weight:800}.token-option-name{min-width:0;font-size:12px;color:#66758a;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.token-list-empty{padding:11px;color:#6a7788;font-size:13px}

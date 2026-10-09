@@ -1,0 +1,8 @@
+packages:
+  - app/agent
+
+allowBuilds:
+  esbuild: true
+
+onlyBuiltDependencies:
+  - esbuild
