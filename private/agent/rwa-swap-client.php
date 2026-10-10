@@ -13,7 +13,7 @@ function swapMinimum(string $out):string {
     $r='';$carry=0;for($i=strlen($out)-1;$i>=0;$i--){$v=(int)$out[$i]*995+$carry;$r=(string)($v%10).$r;$carry=intdiv($v,10);}if($carry)$r=(string)$carry.$r;
     return strlen($r)>3?(ltrim(substr($r,0,-3),'0')?:'0'):'0';
 }
-function swapEffects(array $data,string $owner,string $usdt,string $token,string $spender,string $raw,string $minimum):array {
+function swapEffects(array $data,string $owner,string $usdt,string $token,string $spender,string $raw,string $minimum,bool $allowUnreportedAllowance=false):array {
     if(($data['status']??null)!=='SUCCESS'||!in_array($data['failReason']??null,[null,''],true))throw new RuntimeException('swap_simulation_failed');
     $rows=$data['balanceChanges']??null;if(!is_array($rows)||count($rows)!==2)throw new RuntimeException('swap_balance_changes_unverified');$in=null;$out=null;
     foreach($rows as $r){if(!is_array($r)||strtolower((string)($r['owner']??''))!==strtolower($owner)||strtolower((string)($r['tokenType']??''))!=='erc20')throw new RuntimeException('swap_owner_or_asset_unverified');
@@ -23,11 +23,21 @@ function swapEffects(array $data,string $owner,string $usdt,string $token,string
         else throw new RuntimeException('unexpected_swap_balance_change');
     }
     if($in===null||$out===null||$out==='0'||swapCompare($out,$minimum)<0)throw new RuntimeException('swap_output_below_minimum');
-    $changes=$data['allowanceChanges']??null;if(!is_array($changes)||count($changes)!==1||!is_array($changes[0]))throw new RuntimeException('swap_allowance_changes_unverified');$c=$changes[0];
+    $changes=$data['allowanceChanges']??null;
+    // Binance may return an empty allowanceChanges list even when a sale simulation
+    // reports the exact input debit and output credit. This is NOT allowance proof.
+    // Only the sale caller opts in; the wallet must independently read allowance
+    // before displaying the sale and again immediately before requesting a send.
+    if($changes===[]&&$allowUnreportedAllowance){
+        return ['input_amount_raw'=>$in,'output_amount_raw'=>$out,'minimum_output_raw'=>$minimum,
+            'balance_changes_verified'=>true,'allowance_debit_verified'=>false,'wallet_allowance_check_required'=>true];
+    }
+    if(!is_array($changes)||count($changes)!==1||!is_array($changes[0]))throw new RuntimeException('swap_allowance_changes_unverified');$c=$changes[0];
     if(strtolower((string)($c['tokenAddress']??''))!==strtolower($usdt)||strtolower((string)($c['owner']??''))!==strtolower($owner)||strtolower((string)($c['spender']??''))!==strtolower($spender))throw new RuntimeException('unexpected_swap_allowance_change');
     $before=swapInteger($c['preAmount']??null);$after=swapInteger($c['postAmount']??null);
     if(swapCompare($before,$raw)<0||swapSubtract($before,$after)!==$raw)throw new RuntimeException('swap_allowance_debit_unverified');
-    return ['input_amount_raw'=>$in,'output_amount_raw'=>$out,'minimum_output_raw'=>$minimum,'balance_changes_verified'=>true,'allowance_debit_verified'=>true];
+    return ['input_amount_raw'=>$in,'output_amount_raw'=>$out,'minimum_output_raw'=>$minimum,
+        'balance_changes_verified'=>true,'allowance_debit_verified'=>true,'wallet_allowance_check_required'=>false];
 }
 function purchaseDemoAllowed(string $amount):bool { $raw=units($amount);return swapCompare($raw,'6000000000000000000')>=0&&swapCompare($raw,'10000000000000000000')<=0; }
 function swapReport(string $ticker,string $provider,string $amount,string $wallet,string $vendor):array {
