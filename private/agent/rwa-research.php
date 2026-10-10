@@ -33,14 +33,15 @@ function validatePlan(mixed $v): ?array {
     $limit = $v['limit'] ?? 8;
     $technical = $v['technical'] ?? false;
     $technicalStatus = $v['technical_status'] ?? 'all';
-    if (!in_array($mode, ['assets','health'], true)
-        || !in_array($sort, ['market_cap_desc','market_cap_asc','volume_desc','volume_asc','pnl_desc','pnl_asc','ticker_asc','rsi_asc'], true)
+    if (!in_array($mode, ['assets','health','holders'], true)
+        || !in_array($sort, ['market_cap_desc','market_cap_asc','volume_desc','volume_asc','pnl_desc','pnl_asc','ticker_asc','rsi_asc','holders_desc','top10_concentration_desc','kyc_holders_desc'], true)
         || !in_array($provider, ['all','bstock','ondo','xstocks'], true)
         || !in_array($assetType, ['all','stock','etf'], true)
         || !is_array($tickers) || !array_is_list($tickers) || count($tickers)>8
         || !is_string($search) || strlen($search)>60
         || !is_int($limit) || $limit<1 || $limit>15 || !is_bool($technical)
-        || !in_array($technicalStatus, ['all','candidate'], true) || ($technicalStatus === 'candidate' && !$technical)) return null;
+        || !in_array($technicalStatus, ['all','candidate'], true) || ($technicalStatus === 'candidate' && !$technical)
+        || ($mode === 'holders' && (!in_array($sort, ['holders_desc','top10_concentration_desc','kyc_holders_desc'], true) || $technical || $technicalStatus !== 'all'))) return null;
     $tickers = array_map(static fn($x)=>is_string($x)?strtoupper($x):'', $tickers);
     if (count(array_unique($tickers))!==count($tickers))return null;
     foreach ($tickers as $t)if(!preg_match('/\A[A-Z0-9][A-Z0-9._-]{0,15}\z/', $t))return null;
@@ -261,6 +262,146 @@ function getAssets(PDO $db, array $p): array {
       'binance_http_requests'=>0,'binance_request_weight'=>0];
 }
 
+
+/** Reads ONLY the published contract-keyed holder snapshot; no upstream HTTP requests. */
+function getHolders(PDO $db, array $p): array {
+    $meta=$db->query("SELECT snapshot_id,source,chain_id,rank_type,sort_by,received_total,fetched_at_utc
+        FROM rwa_wallet_stock_rank_meta WHERE id=1")->fetch(PDO::FETCH_ASSOC) ?: null;
+    if (!$meta || (int)$meta['chain_id']!==56 || (int)$meta['rank_type']!==40 || (int)$meta['sort_by']!==30
+        || !preg_match('/\A[a-f0-9]{32}\z/',(string)$meta['snapshot_id'])) {
+        return ['ok'=>true,'mode'=>'holders','source'=>'saved_database','available'=>false,
+            'as_of_utc'=>gmdate('Y-m-d\TH:i:s\Z'),'items'=>[],'total_matching'=>0,'total_ranked'=>null,
+            'snapshot_fetched_at_utc'=>null,'snapshot_age_seconds'=>null,'stale'=>true,
+            'notes'=>['The published stock-token holder snapshot is unavailable. No holder statistics have been inferred.'],
+            'binance_http_requests'=>0,'binance_request_weight'=>0];
+    }
+    $timestamp=strtotime((string)$meta['fetched_at_utc'].' UTC');
+    $age=$timestamp===false?null:max(0,time()-$timestamp);
+    $stale=$age===null||$age>5400;
+    // Only named underlying filters may include absent provider contracts (e.g. xStocks).
+    // Rankings use the single Binance-reported token universe, never a synthetic provider total.
+    $specific=count($p['tickers'])>0;
+    $sql="SELECT t.provider,t.symbol,t.underlying_ticker,t.asset_type,
+           LOWER(t.contract_address) AS contract_address,
+           r.position,r.holders,r.kyc_holders,r.holders_top10_pct
+         FROM rwa_tokens t
+         LEFT JOIN rwa_wallet_stock_rank_rows r
+           ON r.snapshot_id=? AND r.contract_address=LOWER(t.contract_address)
+              AND r.provider=t.provider AND BINARY r.token_symbol=BINARY t.symbol
+              AND BINARY r.underlying_ticker=BINARY UPPER(t.underlying_ticker)
+         WHERE t.chain_id='56' AND t.is_active=1 AND t.provider IN ('bstock','ondo','xstocks')";
+    $args=[(string)$meta['snapshot_id']];
+    if ($specific) {
+        $sql.=' AND UPPER(t.underlying_ticker) IN ('.implode(',',array_fill(0,count($p['tickers']),'?')).')';
+        array_push($args,...$p['tickers']);
+    } elseif ($p['search']==='') $sql.=' AND r.position IS NOT NULL';
+    if ($p['provider']!=='all') {$sql.=' AND t.provider=?';$args[]=$p['provider'];}
+    if ($p['assetType']!=='all')$sql.=' AND t.asset_type='.($p['assetType']==='stock'?'1':'3');
+    if ($p['search']!=='') {
+        $sql.=' AND (UPPER(t.underlying_ticker) LIKE ? OR t.symbol LIKE ?)';
+        $s='%'.str_replace(['\\','%','_'],['\\\\','\\%','\\_'],$p['search']).'%';
+        $args[]=$s;$args[]=$s;
+    }
+    $order=match($p['sort']) {
+        'top10_concentration_desc'=>'(r.holders_top10_pct IS NULL), r.holders_top10_pct DESC, r.position',
+        'kyc_holders_desc'=>'(r.kyc_holders IS NULL), r.kyc_holders DESC, r.position',
+        default=>'(r.position IS NULL), r.position'
+    };
+    $sql.=" ORDER BY {$order}, t.underlying_ticker, FIELD(t.provider,'bstock','ondo','xstocks'), t.symbol";
+    $stmt=$db->prepare($sql);$stmt->execute($args);
+    $items=[];
+    while($row=$stmt->fetch(PDO::FETCH_ASSOC)) {
+        $contract=(string)$row['contract_address'];
+        if (!preg_match('/\A0x[a-f0-9]{40}\z/',$contract))continue;
+        $items[]=['ticker'=>strtoupper((string)$row['underlying_ticker']),
+            'provider'=>(string)$row['provider'],'symbol'=>(string)$row['symbol'],
+            'contract_address'=>$contract,'holder_rank'=>intOrNull($row['position']),
+            'holder_rank_total'=>intOrNull($meta['received_total']),
+            'holders'=>intOrNull($row['holders']),'kyc_holders'=>intOrNull($row['kyc_holders']),
+            'top10_holder_pct'=>numberOrNull($row['holders_top10_pct'])];
+    }
+    $count=count($items);$items=array_slice($items,0,$p['limit']);
+    $cached=[];
+    if ($specific) {
+        foreach($p['tickers'] as $ticker){
+            $cache=readSkillsCacheForTicker($db,$ticker);
+            if($cache!==null)$cached[$ticker]=$cache;
+        }
+    }
+    return ['ok'=>true,'mode'=>'holders','source'=>'saved_database','available'=>true,
+        'as_of_utc'=>gmdate('Y-m-d\TH:i:s\Z'),'snapshot_fetched_at_utc'=>iso($meta['fetched_at_utc']),
+        'snapshot_age_seconds'=>$age,'stale'=>$stale,'total_ranked'=>intOrNull($meta['received_total']),
+        'total_matching'=>$count,'query'=>['provider'=>$p['provider'],'tickers'=>$p['tickers'],
+           'search'=>$p['search'],'limit'=>$p['limit']],
+        'items'=>$items,'cached_asset_skills'=>$cached,
+        'notes'=>['Holder rank is a provider-token rank in the Binance BSC Stock Token Rank universe; it is not an underlying rank.',
+          'These holder and KYC counts are Binance-reported per-contract values, not verified unique people; do not add values across providers.',
+          'Null KYC is unavailable and differs from a real 0. Top-10 percentage measures the reported concentration, not proof of a security risk.',
+          'Provider contracts absent from this ranked universe have null holder metrics. The ranking does not cover all active RWA tokens.',
+          'Cached Ondo data, when present, has a separate collection time. Cross-chain Ondo holder counts must not be compared as BSC contract counts. Ondo market status is not a guarantee that a BSC swap can execute.',
+          'Security audit is informational and not a trading safety approval; unavailable is not low risk.',
+          'Hubble did not make any Binance requests. Older published snapshots must not be described as current.'],
+        'binance_http_requests'=>0,'binance_request_weight'=>0];
+}
+/** Strict read of a still-valid local Skills cache entry; never triggers a fetch. */
+function readSkillsCacheForTicker(PDO $db,string $ticker): ?array {
+    $stmt=$db->prepare("SELECT provider,symbol,LOWER(contract_address) AS contract_address
+        FROM rwa_tokens WHERE chain_id='56' AND is_active=1 AND UPPER(underlying_ticker)=?
+          AND provider IN ('bstock','ondo','xstocks')
+        ORDER BY FIELD(provider,'bstock','ondo','xstocks'),symbol ASC LIMIT 8");
+    $stmt->execute([$ticker]);$records=[];$seen=[];
+    foreach($stmt as $r){
+        $contract=(string)$r['contract_address'];
+        if(!preg_match('/\A0x[a-f0-9]{40}\z/',$contract)||isset($seen[$contract]))continue;
+        $seen[$contract]=true;
+        $records[]=['provider'=>$r['provider'],'symbol'=>substr((string)$r['symbol'],0,40),
+            'contract_address'=>$contract];
+        if(count($records)===4)break;
+    }
+    if(!$records)return null;
+    $key=hash('sha256',$ticker.'|'.json_encode($records,JSON_THROW_ON_ERROR));
+    $path=sys_get_temp_dir().'/bhub-wallet-skills-v1/'.$key.'.json';
+    if(!is_file($path)||!is_readable($path))return null;
+    $raw=@file_get_contents($path,false,null,0,60000);
+    $cache=is_string($raw)?json_decode($raw,true,32):null;
+    if(!is_array($cache)||!is_int($cache['expires']??null)||$cache['expires']<=time()
+       ||!is_array($cache['payload']??null))return null;
+    $payload=$cache['payload'];
+    if(($payload['ok']??null)!==true||($payload['ticker']??null)!==$ticker||($payload['chain_id']??null)!=='56'
+       ||($payload['source']??null)!=='binance_wallet_skills')return null;
+    $audits=[];
+    foreach(($payload['audits']??[]) as $audit) {
+        if(!is_array($audit)||!is_array($audit['audit']??null))continue;
+        $contract=strtolower((string)($audit['contract']??''));
+        $matched=false;
+        foreach($records as $rep)if($rep['contract_address']===$contract && $rep['provider']===($audit['provider']??null)
+           && $rep['symbol']===($audit['symbol']??null)){$matched=true;break;}
+        if(!$matched)continue;
+        $entry=$audit['audit'];$available=($entry['available']??null)===true;
+        $risk=$entry['risk']??null;$level=$entry['risk_level']??null;
+        // Even a cached result must have supported risk semantics; never trust incidental LOW/-1.
+        $valid=$available&&is_int($level)&&in_array($risk,['LOW','MEDIUM','HIGH'],true)
+          && (($risk==='LOW'&&$level>=0&&$level<=1)||($risk==='MEDIUM'&&$level>=2&&$level<=3)
+             ||($risk==='HIGH'&&$level>=4&&$level<=5));
+        $audits[]=['provider'=>$audit['provider'],'symbol'=>$audit['symbol'],
+           'audit_status'=>$valid?'supported_result':'not_available',
+           'risk_level'=>$valid?$risk:null,
+           'verified'=>$valid&&is_bool($entry['verified']??null)?$entry['verified']:null];
+    }
+    $ondo=null;$o=$payload['ondo']??null;
+    if(is_array($o) && is_string($o['contract']??null)){
+        foreach($records as $rep)if($rep['provider']==='ondo' && $rep['contract_address']===strtolower($o['contract'])
+          && $rep['symbol']===($o['symbol']??null)){
+            $ondo=['symbol'=>$rep['symbol'],'market_status'=>is_array($o['status']??null)?$o['status']:null,
+              'fundamentals'=>is_array($o['fundamentals']??null)?$o['fundamentals']:null,
+              'company'=>is_array($o['company']??null)?$o['company']:null];
+            break;
+        }
+    }
+    return ['source'=>'valid_local_cache','fetched_at_utc'=>$payload['fetched_at_utc']??null,
+       'audit'=>$audits,'ondo'=>$ondo];
+}
+
 if (PHP_SAPI !== 'cli' || count($argv) !== 2 || strlen($argv[1])>1600) emit(['ok'=>false,'error'=>'invalid_request']);
 try {
     $plan=validatePlan(json_decode($argv[1],true,16,JSON_THROW_ON_ERROR));
@@ -269,7 +410,7 @@ try {
     $db=chatDb();
     if(!$db instanceof PDO)throw new RuntimeException('database_unavailable');
     $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-    emit($plan['mode']==='health'?getHealth($db,$plan['limit']):getAssets($db,$plan));
+    emit($plan['mode']==='health'?getHealth($db,$plan['limit']):($plan['mode']==='holders'?getHolders($db,$plan):getAssets($db,$plan)));
 } catch(Throwable $e) {
     error_log('[rwa-research] read failed: '.get_class($e));
     emit(['ok'=>false,'error'=>'research_data_unavailable']);

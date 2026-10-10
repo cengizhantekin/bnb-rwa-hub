@@ -25,3 +25,62 @@
   .asset-page-rep-contract{grid-column:1/-1;grid-row:auto}
   .asset-page-rep-note{font-size:10px}
 }
+
+/* Read-only Binance Wallet Skills: Asset Detail, light theme */
+.asset-skill-panel{border:1px solid #dce6f1;border-radius:12px;background:#fff;padding:16px 18px}
+.asset-skill-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.asset-skill-heading h2{margin:0}
+.asset-skill-provider{font-size:11px;font-weight:750;background:#eaf4ff;color:#205d9a;border-radius:999px;padding:5px 10px}
+.asset-skill-sub,.asset-skill-source,.asset-skill-footnote{font-size:12px;line-height:1.5;color:#657790;margin:8px 0}
+.asset-skill-source a,.asset-skill-reports a{color:#1767ae;text-decoration:none}
+.asset-skill-source a:hover,.asset-skill-reports a:hover{text-decoration:underline}
+.asset-skill-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:13px 0}
+.asset-skill-metric{background:#f8fbff;border:1px solid #e3eaf2;border-radius:9px;padding:11px 12px;min-width:0}
+.asset-skill-metric span{display:block;font-size:11px;color:#657992;font-weight:700}
+.asset-skill-metric strong{display:block;font-size:14px;color:#23405f;margin-top:5px;overflow-wrap:anywhere}
+.asset-skill-alert{padding:10px 12px;border:1px solid #eed4a2;border-radius:8px;background:#fff8e9;color:#825408;font-size:12px}
+.asset-skill-reports{display:flex;gap:14px;flex-wrap:wrap;margin:12px 0;color:#667790;font-size:12px}
+.asset-skill-audits{display:grid;gap:9px;margin:12px 0}
+.asset-skill-audit-row{border:1px solid #e2e8f0;background:#fbfcfe;border-radius:9px;padding:12px}
+.asset-skill-audit-top{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;font-size:13px;color:#29445f}
+.asset-skill-risk{border-radius:999px;padding:4px 9px;font-size:11px;font-weight:800;background:#e9eef4;color:#66758a}
+.asset-skill-risk.low{background:#e8f7ee;color:#187343}.asset-skill-risk.medium{background:#fff2d9;color:#895900}.asset-skill-risk.high{background:#ffe8e8;color:#a62c2c}
+.asset-skill-audit-metrics{display:flex;gap:9px 18px;flex-wrap:wrap;margin-top:9px;font-size:12px;color:#60738d}
+.asset-skill-audit-metrics strong{color:#254261}
+.asset-skill-flags{margin-top:9px;font-size:12px;color:#657790}
+.asset-skill-flag{border-left:3px solid #c58b36;padding:5px 10px;margin-top:7px;background:#fff9ef}
+.asset-skill-flag strong,.asset-skill-flag span{display:block}.asset-skill-flag span{margin-top:4px}
+.asset-skill-empty{font-size:12px;color:#76869a;margin:12px 0}
+.asset-skill-disclaimer{margin:12px 0 6px;color:#7c6246;font-size:11px;line-height:1.5}
+.asset-skill-footnote{margin:10px 2px}
+@media(max-width:860px){.asset-skill-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.asset-skill-panel{padding:13px}.asset-skill-grid{grid-template-columns:1fr 1fr;gap:7px}.asset-skill-metric{padding:9px}.asset-skill-metric strong{font-size:12px}}
+
+/* Binance Wallet Skills: read-only holder and independent per-contract audit evidence. */
+.asset-wallet-stock-panel .asset-skill-heading{margin-bottom:10px}
+.asset-wallet-stock-panel .asset-skill-provider{font-size:12px}
+.asset-wallet-stock-panel .asset-page-rep-note{font-size:12px;line-height:1.55}
+.asset-overview-wrap{border:1px solid #dfe6ef;border-radius:11px;overflow-x:auto;background:#fff}
+.asset-overview-table{width:100%;border-collapse:collapse;font-size:14px;text-align:left}
+.asset-overview-table th,.asset-overview-table td{padding:13px 12px;border-bottom:1px solid #e8edf3;vertical-align:middle}
+.asset-overview-table thead th{background:#f3f7fc;color:#1767ae;font-weight:800;font-size:12.5px;white-space:nowrap}
+.asset-overview-table tbody tr:last-child th,.asset-overview-table tbody tr:last-child td{border-bottom:0}
+.asset-overview-table tbody th{font-weight:700;color:#273f5e;white-space:nowrap}
+.asset-overview-table tbody th span{display:block;color:#66788e;font-weight:650;margin-top:4px}
+.asset-overview-table td{color:#344e6b;white-space:nowrap;font-variant-numeric:tabular-nums}
+.asset-overview-audit{display:inline-block;border-radius:999px;padding:5px 9px;font-weight:800;font-size:12.5px;background:#edf1f6;color:#64758b}
+.asset-overview-audit.low{background:#e8f7ee;color:#187343}
+.asset-overview-audit.medium{background:#fff2d9;color:#895900}
+.asset-overview-audit.high{background:#ffe8e8;color:#a62c2c}
+.asset-overview-audit-details{margin-top:6px;max-width:270px;white-space:normal;font-size:12px;color:#536a83}
+.asset-overview-audit-details summary{color:#1767ae;cursor:pointer;font-weight:750}
+.asset-overview-audit-details p{margin:5px 0;line-height:1.4;overflow-wrap:anywhere}
+@media(max-width:700px){
+  .asset-overview-wrap{overflow:visible;border:0;background:transparent}
+  .asset-overview-table,.asset-overview-table tbody{display:block}
+  .asset-overview-table thead{display:none}
+  .asset-overview-table tr{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;padding:10px;margin-bottom:9px;border:1px solid #dfe6ef;border-radius:10px;background:#fff}
+  .asset-overview-table tbody th,.asset-overview-table td{display:block;border:0;padding:7px 4px;white-space:normal;overflow-wrap:anywhere}
+  .asset-overview-table tbody th{grid-column:1/-1;border-bottom:1px solid #edf1f5;padding-bottom:8px}
+  .asset-overview-table td::before{content:attr(data-label);display:block;color:#718096;font-size:12px;font-weight:750;margin-bottom:4px}
+}

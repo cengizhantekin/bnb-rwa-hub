@@ -122,7 +122,7 @@ function technicalTable(r: Row): Row {
 }
 /** Explicit asset identity overrides conversational carry-over, never numerical analysis. */
 export function explicitTickers(message:string, state:Row):string[] {
-  const ignored=new Set(['HUBBLE','RWA','API','RFQ','RSI','SMA','EMA','MA','UTC','USD','USDT','USDC','THE','WHAT','WHY','HOW','CAN','YOU','PLEASE','TOKEN','TOKENS','STOCK','STOCKS','ETF','ETFS','ASSET','ASSETS','ONDO','BSTOCKS','XSTOCKS','COMPARE','ANALYZE','BUY','SELL','SWAP','SHOW','MORE','OPEN','SCREEN','PAGE','FORM','FLOW','WALLET','DASHBOARD','HOME','TRADE','TRADING','PURCHASE','SALE','BUTTON','IF','IS','IT','AND','OR','FOR','TO','OF','IN','ON','OK','HI','HELLO','HELP','THIS','THAT','MY','YOUR','ITS','RISK','RISKS','SETUP','SUPPORT','RESISTANCE','PRICE','HOLDERS','CONFIRMATION','MOMENTUM','THANKS','YES','NO']);
+  const ignored=new Set(['HUBBLE','RWA','API','RFQ','RSI','SMA','EMA','MA','UTC','USD','USDT','USDC','THE','WHAT','WHY','HOW','CAN','YOU','PLEASE','TOKEN','TOKENS','STOCK','STOCKS','ETF','ETFS','ASSET','ASSETS','ONDO','BSTOCKS','XSTOCKS','COMPARE','ANALYZE','BUY','SELL','SWAP','SHOW','MORE','OPEN','SCREEN','PAGE','FORM','FLOW','WALLET','DASHBOARD','HOME','TRADE','TRADING','PURCHASE','SALE','BUTTON','IF','IS','IT','AND','OR','FOR','TO','OF','IN','ON','OK','HI','HELLO','HELP','THIS','THAT','MY','YOUR','ITS','RISK','RISKS','SETUP','SUPPORT','RESISTANCE','PRICE','HOLDERS','HOLDER','KYC','AUDIT','AUDITS','SECURITY','MOST','HELD','TOP','CONCENTRATION','BNB','BSC','CHAIN','BLOCKCHAIN','NETWORK','RANK','RANKING','TOTAL','PERCENT','DISTRIBUTION','CONTRACT','INFO','CONFIRMATION','MOMENTUM','THANKS','YES','NO']);
   const known=new Set((state.pool??[]).map((r:Row)=>r.ticker));
   const found=new Set<string>();
   const exact=message.trim().replace(/^\$/,'').toUpperCase();
@@ -148,6 +148,10 @@ export function isClearResearchRequest(message:string, tickers:string[]):boolean
   if (/\b(?:buy|sell|swap|purchase|checkout|approve|approval)\b/i.test(text)) return false;
   // Technical opportunity discovery retains its existing ranked cards and Show more sequence.
   if (/\b(?:opportunit(?:y|ies)|candidates?|setups?)\b|\bf[ıi]rsat(?:lar)?\b/i.test(text)) return false;
+  // A named single-asset analysis that requests holder data stays on the
+  // technical-detail route, where dated Skills evidence is already supplied.
+  if (isMixedAssetAnalysisRequest(text,tickers)) return false;
+  if (isHolderQuestion(text)) return true;
   if (tickers.length >= 2) return true;
   const marketMetric=/\b(?:market\s*cap(?:italization)?|volume|24\s*h(?:our)?|24h|gainers?|losers?|biggest|largest|smallest|highest|lowest|top|bottom|rank(?:ing|ed)?|rsi|perform(?:ance|ers?)|valuations?)\b/i.test(text);
   const relevantSubject=/\b(?:stocks?|etfs?|assets?|shares?|securities|tokenized|rwa|market|companies|underlyings?|providers?|ondo|bstocks?|xstocks?)\b/i.test(text);
@@ -156,6 +160,50 @@ export function isClearResearchRequest(message:string, tickers:string[]):boolean
     && /\b(?:data|fetch|update|market|rwa|assets?|prices?|hub|collector|sources?)\b/i.test(text);
   return dataHealth || (marketMetric && relevantSubject) || filteredListing;
 }
+
+/** Informational Skills-data questions; never trade actions or technical opportunity requests. */
+export function isHolderQuestion(message:string):boolean {
+  return /\b(?:holders?|most\s+held|kyc|top\s*10\s+(?:holder|concentration)|holder\s+concentration|wallet\s+skills|security\s+audits?|contract\s+audits?|attestation|ondo\s+(?:fundamentals|intelligence|securities|info)|dividend\s+yield|p\/?e\s*(?:ttm)?|52[ -]?week|market\s+session)\b/i.test(message)
+    || /\b(?:sahip|sahiplik|sahipleri|tutulan|tutanlar|holderlar|yo\u011funla\u015fma)\b/i.test(message);
+}
+/** A mixed request must not lose saved technical evidence just because holders were mentioned.
+ * Only an explicit single-underlying analysis is routed this way; comparisons,
+ * rankings and holder-only questions keep the bounded DB research path. */
+export function isMixedAssetAnalysisRequest(message:string,tickers:string[]):boolean {
+  return tickers.length===1 && /^\s*(?:analy[sz]e|assess|review)\b/i.test(message)
+    && isHolderQuestion(message)
+    && !/\b(?:buy|sell|swap|purchase|checkout|approve|approval)\b/i.test(message);
+}
+/** Maps an explicitly named provider token to a search/underlying filter, never to a financial value. */
+export function holderResearchPlan(message:string, explicit:string[]):Row {
+  const named=new Set(explicit);
+  for(const m of message.matchAll(/\b([A-Z][A-Z0-9._-]{1,15}(?:on|B|x))\b/g)){
+    const token=m[1]!;
+    // Chain names are not provider-token symbols (BNB must never become BN).
+    if (['BNB','BSC'].includes(token)) continue;
+    const suffix=/on$/.test(token)?2:1;
+    const under=token.slice(0,-suffix).toUpperCase();
+    if(SYMBOL.test(under)&&under.length>=2)named.add(under);
+    named.delete(token.toUpperCase());
+  }
+  const tickers=[...named].filter(x=>SYMBOL.test(x)).slice(0,8);
+  // Accept both "top 5" and "the 5 most held", including small number words.
+  // Never mistake a rank denominator, chain ID or holder quantity for a list limit.
+  const normalized=message.toLowerCase();
+  const quantity='(?:1[0-5]|[1-9]|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen)';
+  const before=new RegExp(`\\b(?:top|first|show|list|find|give(?:\\s+me)?)\\s+(?:the\\s+)?(${quantity})\\b`,'i');
+  const after=new RegExp(`\\b(?:the\\s+)?(${quantity})\\s+(?:most\\s+held|most\\s+popular|(?:top|highest)\\s+(?:kyc|holder)|stock\\s+tokens?)\\b`,'i');
+  const words:Record<string,number>={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15};
+  const match=before.exec(normalized)??after.exec(normalized);
+  const count=match?(words[match[1]!]??Number(match[1])):null;
+  const limit=tickers.length?15:(count!==null&&Number.isInteger(count)&&count>=1&&count<=15?count:10);
+  const provider=/\bxstocks?\b/i.test(message)?'xstocks':/\bbstocks?\b/i.test(message)?'bstock':/\bondo\b/i.test(message)?'ondo':'all';
+  const sort=/\b(?:concentrat(?:ion|ed)|top\s*10\s+(?:holders?\s*(?:%|percent|percentage)|concentration)|yogunluk|yoğunluk)\b/i.test(message)?'top10_concentration_desc'
+    :/\b(?:most\s+kyc|highest\s+kyc|top\s+kyc|kyc\s+holders?)\b/i.test(message)?'kyc_holders_desc':'holders_desc';
+  return {mode:'holders',sort,provider,asset_type:'all',tickers,search:'',limit,
+    technical:false,technical_status:'all'};
+}
+
 export function requestedOpportunityCount(message:string):number|null {
   const normalized=message.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'').replace(/ı/g,'i');
   const words:Record<string,number>={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,bir:1,iki:2,uc:3,dort:4,bes:5,alti:6,yedi:7,sekiz:8,dokuz:9,on:10};
@@ -213,6 +261,7 @@ export async function handleChat(input: ChatInput, deps: Dependencies, signal?: 
 
       const exact = input.message.trim().toUpperCase();
       if (explicit.length===1 && exact.replace(/^\$/,'')===explicit[0]) { action = 'detail'; ticker = explicit[0]!; }
+      else if (isMixedAssetAnalysisRequest(input.message,explicit)) { action = 'detail'; ticker = explicit[0]!; }
       else if (isClearResearchRequest(input.message, explicit)) { action = 'research'; ticker = null; }
       else {
         try {
@@ -237,17 +286,51 @@ export async function handleChat(input: ChatInput, deps: Dependencies, signal?: 
     if (!deps.research) return done(frame(state,'The saved market research tool is not available right now. Existing analysis and app actions remain available.',{model_status:'unavailable',data_status:'unavailable'}));
     try {
       const requestedTickers=explicitTickers(input.message,state);
-      const plan=await ask('research_plan',{user_question:input.message.trim(),recent_messages:context,
-        explicit_tickers:requestedTickers.length>=2&&requestedTickers.length<=8?requestedTickers:[]});
+      const skillsRequest=isHolderQuestion(input.message);
+      const plan=skillsRequest?holderResearchPlan(input.message,requestedTickers)
+        :await ask('research_plan',{user_question:input.message.trim(),recent_messages:context,
+          explicit_tickers:requestedTickers.length>=2&&requestedTickers.length<=8?requestedTickers:[]});
       // Never silently answer a named multi-ticker comparison from an incomplete selection.
-      if (requestedTickers.length>=2 && requestedTickers.length<=8 &&
+      if (!skillsRequest && requestedTickers.length>=2 && requestedTickers.length<=8 &&
           (!Array.isArray(plan.tickers) || !requestedTickers.every(t=>plan.tickers.includes(t)))) throw new Error('incomplete_research_tickers');
       const evidence=await deps.research(plan);
       if(evidence.ok!==true)return done(frame(state,'I could not read the saved research dataset for that question. No market figures have been inferred.',{model_status:'unavailable',data_status:'unavailable'}));
+      // Exact stock-token ranking lists can be rendered directly from the validated
+      // saved DB snapshot. Do not spend a model call or risk a malformed answer for
+      // an already ordered, bounded and source-attributed list. Named asset queries
+      // still use the conversational research path below.
+      if(skillsRequest && plan.mode==='holders' && Array.isArray(plan.tickers) && !plan.tickers.length
+          && evidence.mode==='holders' && typeof evidence.available==='boolean' && Array.isArray(evidence.items)){
+        const names:Record<string,string>={bstock:'bStocks',ondo:'Ondo',xstocks:'xStocks'};
+        const title=plan.sort==='top10_concentration_desc'?'Highest top-10 holder concentration'
+          :plan.sort==='kyc_holders_desc'?'Most KYC holders':'Most held stock tokens';
+        if(evidence.available!==true)return done(frame(state,'The saved Binance Wallet Skills stock-token holder snapshot is unavailable. No ranking or holder counts have been inferred.',
+          {model_status:'not_called',response_origin:'saved_database',data_status:'unavailable'}));
+        const rows=evidence.items.map((x:Row)=>[
+          x.holder_rank==null?'—':`#${x.holder_rank} / ${x.holder_rank_total??evidence.total_ranked??'—'}`,
+          x.symbol,names[x.provider]??x.provider,
+          typeof x.holders==='number'?x.holders.toLocaleString('en-US'):'—',
+          typeof x.kyc_holders==='number'?x.kyc_holders.toLocaleString('en-US'):'—',
+          typeof x.top10_holder_pct==='number'?`${x.top10_holder_pct.toFixed(2)}%`:'—'
+        ]);
+        const total=Number.isInteger(evidence.total_ranked)?String(evidence.total_ranked):'an unconfirmed number of';
+        const at=typeof evidence.snapshot_fetched_at_utc==='string'?evidence.snapshot_fetched_at_utc:'unknown collection time';
+        const filter=plan.provider!=='all'?` (${names[plan.provider]??plan.provider} only)`:'';
+        const description=rows.length
+          ?`${title}${filter}: ${rows.length} contract${rows.length===1?'':'s'} from the saved Binance Wallet Skills ranking of ${total} BSC stock-token contracts. Snapshot collected at ${at}. Counts are Binance-reported per contract, not verified unique people. Holder rankings are shared across providers and are not underlying-level totals.`
+          :`No matching ranked stock-token contracts were found in the saved snapshot collected at ${at}. No values have been inferred.`;
+        const freshness=evidence.stale===true?' This snapshot is flagged stale; the figures are not live.':'';
+        const tables=rows.length?[{title,columns:['Holder rank','Token','Provider','Holders','KYC holders','Top 10 holder %'],rows,numeric_columns:[]}]:[];
+        return done(frame(state,description+freshness,{tables,model_status:'not_called',response_origin:'saved_database',
+          data_status:evidence.stale?'historical':'saved_database',research_as_of_utc:evidence.as_of_utc,
+          db_time_ms:evidence.db_time_ms??null}));
+      }
       const reply=await ask('research_answer',{user_question:input.message.trim(),recent_messages:context,evidence});
       if(!obj(reply) || Object.keys(reply).length!==1 || typeof reply.answer!=='string' || reply.answer.trim().length<15 || reply.answer.length>3500
         || /<\s*\/?\s*[a-z][^>]*>/i.test(reply.answer))throw new Error('invalid_research_reply');
-      return done(frame(state,reply.answer.trim(),{model_status:'live',response_origin:'agent_research',data_status:'saved_database',research_as_of_utc:evidence.as_of_utc,db_time_ms:evidence.db_time_ms??null}));
+      // Preserve missing-data semantics without exposing a raw JSON null in prose.
+      const answer=reply.answer.trim().replace(/\bnull\b/gi,'unavailable');
+      return done(frame(state,answer,{model_status:'live',response_origin:'agent_research',data_status:'saved_database',research_as_of_utc:evidence.as_of_utc,db_time_ms:evidence.db_time_ms??null}));
     } catch {
       return done(frame(state,'I could not complete that database-backed research request. The previous conversation and other Hubble functions are unchanged.',{model_status:'unavailable',data_status:'unavailable'}));
     }
@@ -256,7 +339,7 @@ export async function handleChat(input: ChatInput, deps: Dependencies, signal?: 
     const fallback='I can research saved market rankings, asset coverage and freshness, explore tokenized stocks, find technical RWA candidates, analyze a ticker, compare providers, and open the app’s Buy, Sell or Swap flows from a written request. Trading still requires the same review steps and explicit wallet confirmations; Hubble never sends a purchase, sale or approval automatically. I can also explain RWA concepts and technical indicators using the app’s saved evidence and stated limitations.';
     try {
       const reply=await ask('conversation',{user_message:input.message.trim()||'What can I ask you?',recent_messages:context,
-        capabilities:{assistant_name:'Hubble',scope:'tokenized-stock RWA research and app navigation',discovery:'agent-ranked technical candidates from saved evidence',analysis:'recorded prices, SMA20/SMA50/SMA200 where available, RSI14, detected price zones and setup evidence',comparison:'saved bStocks, Ondo and xStocks representations',trading:'written Buy, Sell and Swap requests can open the existing app flows; current quotes are requested inside those flows and every approval/purchase/sale still requires explicit wallet confirmation',navigation:'written requests can open the Dashboard',education:'general RWA, technical-indicator and app-use explanations',market_research:'saved DB asset search, multi-asset comparison, market rankings, provider availability and data health, with model-written answers',data_access:'saved research snapshots in conversation; executable quotes are requested only after opening a trade flow',purchases_enabled:true,sales_enabled:true,crypto_discovery_enabled:false}});
+        capabilities:{assistant_name:'Hubble',scope:'tokenized-stock RWA research and app navigation',discovery:'agent-ranked technical candidates from saved evidence',analysis:'recorded prices, SMA20/SMA50/SMA200 where available, RSI14, detected price zones and setup evidence',comparison:'saved bStocks, Ondo and xStocks representations',trading:'written Buy, Sell and Swap requests can open the existing app flows; current quotes are requested inside those flows and every approval/purchase/sale still requires explicit wallet confirmation',navigation:'written requests can open the Dashboard',education:'general RWA, technical-indicator and app-use explanations',market_research:'saved DB asset search, multi-asset comparison, stock-token holder rankings and KYC/holder concentration metrics, provider availability and data health, with model-written answers',data_access:'saved research snapshots in conversation; executable quotes are requested only after opening a trade flow',purchases_enabled:true,sales_enabled:true,crypto_discovery_enabled:false}});
       if(!obj(reply)||Object.keys(reply).length!==1||typeof reply.answer!=='string'||reply.answer.trim().length<5||reply.answer.length>1800||/[<>]|\b(?:system prompt|chain.of.thought)\b/i.test(reply.answer))throw new Error('invalid_conversation_reply');
       return done(frame(state,reply.answer.trim(),{model_status:'live',response_origin:'agent_written',actions:[{action:'discover',label:'Find RWA opportunities'}]}));
     } catch {
@@ -348,13 +431,26 @@ export async function handleChat(input: ChatInput, deps: Dependencies, signal?: 
     const snapshot = await deps.snapshot(ticker);
     if (!snapshot.ok || !snapshot.found) return done(frame(state, `${ticker} has no available provider snapshot in the current catalogue.`, {data_status:'unavailable'}));
     const tokens = snapshot.tokens;
-    const shown = tokens.map((r: Row) => [r.provider,r.symbol,r.price ?? 'Unknown',r.reference_price ?? 'Unknown',r.holders ?? 'Unknown',r.liquidity ?? 'Unknown',
+    const shown = tokens.map((r: Row) => [r.provider,r.symbol,r.price ?? 'Unknown',r.reference_price ?? 'Unknown',r.liquidity ?? 'Unknown',
       `${r.market_price_age_seconds ?? 'Unknown'} seconds (${r.market_price_age_seconds_status ?? 'missing'})`,`${r.market_fetch_age_seconds ?? 'Unknown'} seconds (${r.market_fetch_age_seconds_status ?? 'missing'})`]);
     const missing = ['bstock','ondo','xstocks'].filter(p=>!tokens.some((r: Row)=>r.provider===p));
-    const text = `Provider comparison for ${ticker}. Prices are database snapshots, not executable quotes. Price and liquidity units are not established here. Holder counts do not establish activity. Zero reported liquidity does not establish that RFQ is unavailable. Fees, slippage and executable quotes are still required.`
+    const text = `Provider comparison for ${ticker}. Prices are database snapshots, not executable quotes. Price and liquidity units are not established here. The general market snapshot does not validate holder counts. Zero reported liquidity does not establish that RFQ is unavailable. Fees, slippage and executable quotes are still required.`
       + (missing.length ? ` No active ${missing.join(', ')} representation was found in the checked catalogue.`:'');
     state = Object.keys(state).length ? {...state,selected:ticker,last_action:'compare'} : {pool:[],ranking:[],offset:0,selected:ticker,generated_at_utc:snapshot.captured_at_utc,last_action:'compare'};
-    return done(frame(state,text,{ticker,tables:[{title:`${ticker}: provider snapshot at ${snapshot.captured_at_utc}`,columns:['Provider','Token','Market price','Reference price','Holders','Reported liquidity','Price source age','API fetch age'],rows:shown,numeric_columns:[2,3,5]}],actions:[{action:'detail',ticker,label:`Analyze ${ticker}`},{action:'buy',ticker,label:`Buy ${ticker}`}],db_time_ms:snapshot.db_time_ms}));
+    let skillTables:Row[]=[];
+    try {
+      if (deps.research) {
+        const skill=await deps.research(holderResearchPlan(`holders ${ticker}`,[ticker]));
+        if(skill.ok===true&&skill.available===true&&Array.isArray(skill.items)) {
+          skillTables=[{title:`${ticker}: Binance Wallet Skills holder snapshot (${skill.snapshot_fetched_at_utc??'time unknown'})`,
+            columns:['Provider','Token','Holder rank','Holders (KYC / Total)','Top 10 holder %'],
+            rows:skill.items.map((x:Row)=>[x.provider,x.symbol,
+              x.holder_rank===null?'N/A':`#${x.holder_rank} / ${skill.total_ranked}`,
+              `${x.kyc_holders??'—'} / ${x.holders??'—'}`,x.top10_holder_pct??'N/A']),numeric_columns:[4]}];
+        }
+      }
+    }catch{/* Skills enrichment never blocks existing comparison. */}
+    return done(frame(state,text,{ticker,tables:[{title:`${ticker}: provider snapshot at ${snapshot.captured_at_utc}`,columns:['Provider','Token','Market price','Reference price','Reported liquidity','Price source age','API fetch age'],rows:shown,numeric_columns:[2,3,4]},...skillTables],actions:[{action:'detail',ticker,label:`Analyze ${ticker}`},{action:'buy',ticker,label:`Buy ${ticker}`}],db_time_ms:snapshot.db_time_ms}));
   }
   let current:Row;
   try { current=await deps.technical(ticker); } catch {current={ok:false,error:'technical_snapshot_unavailable'};}
@@ -376,8 +472,24 @@ export async function handleChat(input: ChatInput, deps: Dependencies, signal?: 
     const reason=reasons[current.error]??(!Number.isFinite(sourceAge)||sourceAge < -60_000
       ?'The collected API candle has no valid completed source timestamp.'
       :'The collected API data has insufficient valid prices or indicator history for this analysis.');
+    // If the technical scan has no usable record, keep the independent holder
+    // evidence visible for mixed requests. Absence in this scan does not prove
+    // that all database technical indicators are absent.
+    const skillTables:Row[]=[];
+    if (input.action==='message' && isMixedAssetAnalysisRequest(input.message,[ticker]) && deps.research) {
+      try {
+        const skill=await deps.research(holderResearchPlan(`holders ${ticker}`,[ticker]));
+        if(skill.ok===true&&skill.available===true&&Array.isArray(skill.items)&&skill.items.length){
+          skillTables.push({title:`${ticker}: Binance Wallet Skills holder snapshot (${skill.snapshot_fetched_at_utc??'time unknown'}${skill.stale?' — stale':''})`,
+            columns:['Provider','Token','Holder rank','Holders (KYC / Total)','Top 10 holder %'],
+            rows:skill.items.map((x:Row)=>[x.provider,x.symbol,
+              x.holder_rank==null?'N/A':`#${x.holder_rank} / ${skill.total_ranked??'—'}`,
+              `${x.kyc_holders??'—'} / ${x.holders??'—'}`,x.top10_holder_pct??'N/A']),numeric_columns:[4]});
+        }
+      } catch { /* Holder evidence must never block technical error reporting. */ }
+    }
     return done(frame(state,`${ticker}: ${reason} ${[...new Set(fieldReasons)].join(' ')} This does not establish that the token has lost its opportunity status. The older conversation evidence has not been reused.`,
-      {ticker,data_status:'unavailable',opportunity_status:'unknown',actions:[{action:'refresh',ticker,label:'Check again'},{action:'compare',ticker,label:`Compare ${ticker} providers`}]}));
+      {ticker,tables:skillTables,data_status:'unavailable',opportunity_status:'unknown',actions:[{action:'refresh',ticker,label:'Check again'},{action:'compare',ticker,label:`Compare ${ticker} providers`}]}));
   }
   const q=r.data_quality??{};
   const sourceStale=sourceAge>86_400_000;
@@ -402,9 +514,22 @@ export async function handleChat(input: ChatInput, deps: Dependencies, signal?: 
   let analysis: string;
   let modelStatus = 'live';
   const facts=analysisEvidence(r);
+  let skillsEvidence:Row|null=null;
+  try{
+    if(deps.research){
+      const res=await deps.research(holderResearchPlan(`holders ${ticker}`,[ticker]));
+      if(res.ok===true&&res.available===true){
+        skillsEvidence={source:'saved_wallet_skills_data',snapshot_fetched_at_utc:res.snapshot_fetched_at_utc,
+          stale:res.stale,total_ranked:res.total_ranked,
+          providers:Array.isArray(res.items)?res.items.map((x:Row)=>({provider:x.provider,symbol:x.symbol,
+            holder_rank:x.holder_rank,holders:x.holders,kyc_holders:x.kyc_holders,
+            top10_holder_pct:x.top10_holder_pct})):[],cached_asset_skills:res.cached_asset_skills?.[ticker]??null};
+      }
+    }
+  }catch{/* Supplementary data must not block technical analysis. */}
   try {
     const value = await ask('analyze', { ticker:r.ticker, symbol:r.symbol, provider:r.provider,
-      response_mode:followUp?'follow_up':'initial_analysis', recent_messages:context, evidence:facts, source_stale:sourceStale, data_quality:{...q,report_status:reportDelayed?'delayed':'recent'}, opportunity_status:opportunityStatus, technical_generated_at_utc:current.generated_at_utc, user_question:input.message.trim() || null });
+      response_mode:followUp?'follow_up':'initial_analysis', recent_messages:context, evidence:facts, wallet_skills:skillsEvidence, source_stale:sourceStale, data_quality:{...q,report_status:reportDelayed?'delayed':'recent'}, opportunity_status:opportunityStatus, technical_generated_at_utc:current.generated_at_utc, user_question:input.message.trim() || null });
     analysis=validateAnalysis(value,ticker,facts);
     console.info('[rwa-chat-analysis] '+JSON.stringify({ticker,status:'validated',origin:'agent_written',text_chars:analysis.length,request_utc:new Date().toISOString()}));
   } catch (error) {

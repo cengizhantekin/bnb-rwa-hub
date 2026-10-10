@@ -51,6 +51,48 @@
  }
  function moverList(title,items){const c=card(title),list=e('div','dash-list');if(!items?.length)list.append(e('div','empty-state','No qualifying saved observations are available.'));else for(const x of items){const tone=x.change_24h>0?'up':x.change_24h<0?'down':'neutral';list.append(assetRow(x,`${provider(x.provider_label)} · ${x.symbol||''} · ${timeSub(x.source_utc,x.fetch_utc)}`,fmtPct(x.change_24h),tone));}c.append(list);return c;}
  function underlyingRankList(title,items,key){const c=card(title),list=e('div','dash-list');if(!items?.length)list.append(e('div','empty-state','No saved underlying market values are available.'));else for(const x of items)list.append(assetRow(x,`Source: ${provider(x.provider_label)} · ${x.symbol||''}`,fmtMoney(x[key])));c.append(list);return c;}
+ /** Contract-specific Binance Most Held snapshot, served by local DB only. */
+ async function loadBinanceStockRank(container){
+  const target=e('div','stock-rank-content','Loading saved holder rankings…');
+  container.append(target);
+  try{
+   const response=await fetch('dashboard-stock-rank-api.php',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   const payload=await response.json();
+   if(!response.ok||payload?.ok!==true||payload.chain_id!=='56'||payload.rank_type!==40||payload.sort_by!==30||!Array.isArray(payload.items))throw Error('rank_unavailable');
+   if(!container.isConnected)return;
+   clear(target);
+   if(!payload.available){target.append(e('div','empty-state','Saved Binance holder rankings are unavailable. The next collector run will retry.'));}
+   else{
+    const list=e('div','stock-rank-list');
+    for(const item of payload.items.slice(0,10)){
+     if(!Number.isInteger(item.position)||item.position<1||typeof item.symbol!=='string'||item.symbol.length>40)continue;
+     const r=e('div','stock-rank-row'),identity=e('div','stock-rank-identity');
+     identity.append(e('span','stock-rank-position',`#${item.position}`));
+     const rankLogo=assetLogo({ticker:validTicker(item.matched_ticker)?item.matched_ticker:item.symbol,logo_url:item.logo_url});
+     rankLogo.classList.add('stock-rank-logo');
+     identity.append(rankLogo);
+     const label=e('div','stock-rank-name'),matched=validTicker(item.matched_ticker)?item.matched_ticker:null;
+     if(matched)label.append(assetLink(matched,'asset-ticker-link stock-rank-ticker',item.symbol));
+     else label.append(e('strong','stock-rank-ticker',item.symbol));
+     label.append(e('div','dash-sub',matched?`${item.provider||'Tracked provider'} · ${matched}`:'Token not matched in local catalogue'));
+     identity.append(label);
+     const holders=(Number.isSafeInteger(item.holders)&&item.holders>=0)?fmtInt(item.holders):'—';
+     const holderLabel=e('span','stock-rank-holder',holders==='—'?'—':`${holders} holders`);
+     holderLabel.title='Binance-reported holders for this individual BSC token contract';
+     holderLabel.setAttribute('aria-label',`Token holders: ${holders}`);
+     r.append(identity,holderLabel);list.append(r);
+    }
+    if(list.children.length)target.append(list);
+    else target.append(e('div','empty-state','No valid saved token identities were returned.'));
+   }
+   const metadata=e('div','stock-rank-meta');
+   metadata.append(e('span','',`Binance Wallet Skill data · ${payload.total??'—'} ranked tokens · collected ${age(payload.fetched_at_utc)}${payload.stale?' · STALE SNAPSHOT':''}`));
+   metadata.append(e('span','',`Saved DB snapshot · Last collector: ${payload.last_collector_http_requests??'—'} HTTP requests · ${payload.last_collector_duration_ms??'—'} ms · Weight ${payload.last_collector_request_weight??'unknown'}`));
+   target.append(metadata);
+  }catch{
+   if(container.isConnected)target.replaceChildren(e('div','empty-state','Saved Binance stock holder data could not be loaded. Existing Market Pulse rankings are unaffected.'));
+  }
+ }
  function renderPulse(d,panel){
   clear(panel);panel.append(head('Market Pulse','Representative-provider 24h movement from saved observations.'));
   const medianTone=d.median_24h>0?'up':d.median_24h<0?'down':'neutral';
@@ -62,6 +104,13 @@
   ]));
   const grid=e('div','dashboard-grid two');grid.append(moverList('Top 5 gainers',d.gainers),moverList('Top 5 losers',d.losers));panel.append(grid);
   const underlyingGrid=e('div','dashboard-grid two market-rank-grid');underlyingGrid.append(underlyingRankList('Top 5 underlying 24h volume',d.top_underlying_volume_24h,'underlying_volume_24h'),underlyingRankList('Top 5 underlying market cap',d.top_underlying_market_cap,'underlying_market_cap'));panel.append(underlyingGrid);
+  const external=e('section','dashboard-card stock-rank-card');
+  const rankHeading=e('div','stock-rank-heading');
+  rankHeading.append(e('h3','','Most Held Stock Tokens'),e('span','stock-rank-provider','Binance Wallet Skill'));
+  external.append(rankHeading);
+  external.append(e('p','stock-rank-caption','Binance-reported token-contract holders, ranked highest first. Provider tokens are kept separate; holder counts are not unique people or an underlying-level aggregate. Collected in a shared read-only background snapshot.'));
+  panel.append(external);
+  void loadBinanceStockRank(external);
   panel.append(e('p','dashboard-note',d.freshness_rule||'Only sufficiently recent saved source observations are ranked.'));
  }
  function opportunityCard(x){

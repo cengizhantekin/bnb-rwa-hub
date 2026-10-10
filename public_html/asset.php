@@ -20,12 +20,13 @@ $pageTicker = $validTicker ? $ticker : 'Asset';
 <link rel="stylesheet" href="css/rwa-chat.css?v=20261008-cooldown">
 <link rel="stylesheet" href="css/legal.css?v=20261008-legal">
 <link rel="stylesheet" href="css/site-nav-assets.css?v=20261009-sharednav1">
-<link rel="stylesheet" href="css/asset.css?v=20261009-assettype2">
+<link rel="stylesheet" href="css/asset.css?v=20261010-skills-table3">
 <link rel="stylesheet" href="css/rwa-buy.css">
 <link rel="stylesheet" href="css/hubble-trading.css?v=20261008-fixes">
 <script src="js/hubble-buy.js?v=20261008-fixes" defer></script>
 <script src="js/asset-buy.js?v=20261008-assetbuy1" defer></script>
-<script src="js/asset.js?v=20261009-heroactions1" defer></script>
+<script src="js/asset.js?v=20261010-skills-table3" defer></script>
+<script src="js/asset-skills.js?v=20261010-overview2" defer></script>
 <script src="js/site-nav.js?v=20261007-nav" defer></script>
 <link rel="stylesheet" href="css/about-context-links.css?v=20261009-links-v2"><link rel="stylesheet" href="css/site-layout.css?v=20261010-layout2"></head>
 <body data-asset-ticker="<?= htmlspecialchars($validTicker ? $ticker : '', ENT_QUOTES, 'UTF-8') ?>">
@@ -39,6 +40,7 @@ $pageTicker = $validTicker ? $ticker : 'Asset';
 <div id="asset-page-loading" class="asset-page-state">Loading saved asset data…</div>
 <div id="asset-page-error" class="asset-page-state error" hidden>Saved asset details could not be loaded.</div>
 <div id="asset-page-content" hidden></div>
+<div id="asset-wallet-skills" aria-live="polite" hidden></div>
 
 <?php require __DIR__ . '/includes/site-footer.php'; ?>
 </main>

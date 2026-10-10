@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Binance Wallet Stock Rank snapshot every 30 minutes
+
+[Timer]
+OnCalendar=*-*-* *:00,30:00 UTC
+RandomizedDelaySec=20s
+Persistent=true
+Unit=bnb-rwa-wallet-stock-rank.service
+
+[Install]
+WantedBy=timers.target

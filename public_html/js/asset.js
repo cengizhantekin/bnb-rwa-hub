@@ -9,6 +9,58 @@
 
   if (!root || !loading || !error || !refreshStatus) return;
 
+  // Independently fetched audit evidence is keyed only by an exact verified BSC contract.
+  const auditsByContract = new Map();
+  function validContract(v) { return typeof v === 'string' && /^0x[a-fA-F0-9]{40}$/.test(v); }
+  function auditLabel(contract) {
+    const entry = auditsByContract.get(String(contract).toLowerCase());
+    const audit = entry?.audit;
+    if (!audit?.available || !['LOW','MEDIUM','HIGH'].includes(audit.risk)) return 'N/A';
+    return `${audit.risk} risk`;
+  }
+  function auditClass(contract) {
+    const entry = auditsByContract.get(String(contract).toLowerCase());
+    return entry?.audit?.available && ['LOW','MEDIUM','HIGH'].includes(entry.audit.risk)
+      ? entry.audit.risk.toLowerCase() : 'unknown';
+  }
+  function updateAuditCells() {
+    root.querySelectorAll('[data-stock-audit-contract]').forEach(node => {
+      const contract = node.dataset.stockAuditContract;
+      const entry = auditsByContract.get(String(contract).toLowerCase());
+      const audit = entry?.audit;
+      node.replaceChildren();
+      const status=document.createElement('span');
+      status.className=`asset-overview-audit ${auditClass(contract)}`;
+      status.textContent=auditLabel(contract);
+      status.title=audit?.available?'Binance-reported audit result; independent verification recommended.':
+        'Audit is unsupported or unavailable. N/A does not imply low risk.';
+      node.append(status);
+      if (!audit?.available) return;
+      const details=document.createElement('details');
+      details.className='asset-overview-audit-details';
+      const summary=document.createElement('summary');summary.textContent='Details';details.append(summary);
+      const verified=audit.verified===true?'Yes':audit.verified===false?'No':'Unknown';
+      const tax=v=>typeof v==='number'&&Number.isFinite(v)?`${v}%`:'—';
+      const info=document.createElement('p');
+      info.textContent=`Contract verified: ${verified} · Buy tax: ${tax(audit.buy_tax_pct)} · Sell tax: ${tax(audit.sell_tax_pct)}`;
+      details.append(info);
+      const flags=Array.isArray(audit.flags)?audit.flags:[];
+      const flagText=document.createElement('p');
+      flagText.textContent=flags.length
+        ?flags.map(f=>`${f.type||'CAUTION'}: ${f.title||'Flag'}${f.description?' · '+f.description:''}`).join(' | ').slice(0,800)
+        :'No flagged checks in this supported audit snapshot.';
+      details.append(flagText);node.append(details);
+    });
+  }
+  window.addEventListener('assetWalletAuditData', event => {
+    auditsByContract.clear();
+    for (const entry of (Array.isArray(event.detail?.audits) ? event.detail.audits : [])) {
+      if (!validContract(entry?.contract)) continue;
+      auditsByContract.set(entry.contract.toLowerCase(), entry);
+    }
+    updateAuditCells();
+  });
+
   const REFRESH_INTERVAL_MS = 120000;
   const REFRESH_RETRY_MS = 30000;
   let refreshDueAt = Date.now() + REFRESH_INTERVAL_MS;
@@ -197,6 +249,36 @@
       }).join('')}</div>`;
     }
 
+    // Binance Wallet Skills holder/audit table is intentionally separate from
+    // RWA representations. No price, ratio or contract link is repeated here.
+    let overview = '<div class="asset-page-empty">No active BSC provider tokens are available.</div>';
+    if (reps.length) {
+      overview = `<div class="asset-overview-wrap"><table class="asset-overview-table">
+        <thead><tr><th scope="col">Provider / Token</th><th scope="col">Holder Rank</th>
+          <th scope="col">Holders (KYC / Total)</th><th scope="col">Top 10 Holder %</th>
+          <th scope="col">Security Audit</th></tr></thead><tbody>
+        ${reps.map(rep => {
+          const contract=rep.contract_address||'';
+          const count=v=>Number.isSafeInteger(v)&&v>=0?v.toLocaleString('en-US'):'—';
+          const holders=count(rep.holders);
+          const kyc=count(rep.kyc_holders);
+          const top=typeof rep.holders_top10_pct==='number'&&Number.isFinite(rep.holders_top10_pct)
+            ? rep.holders_top10_pct.toFixed(2)+'%' : '—';
+          const holderPosition=rep.holder_rank;
+          const holderTotal=rep.holder_rank_total;
+          const holderRank=Number.isSafeInteger(holderPosition)&&holderPosition>0&&
+            Number.isSafeInteger(holderTotal)&&holderTotal>=holderPosition
+            ? `#${count(holderPosition)} / ${count(holderTotal)}` : '—';
+          return `<tr><th scope="row"><strong>${esc(rep.provider_label||rep.provider)}</strong><span>${esc(rep.symbol||'—')}</span></th>
+            <td data-label="Holder Rank">${holderRank}</td>
+            <td data-label="Holders (KYC / Total)">${kyc} / ${holders}</td>
+            <td data-label="Top 10 Holder %">${top}</td>
+            <td data-label="Security Audit"><div data-stock-audit-contract="${esc(contract)}"><span class="asset-overview-audit unknown" title="Audit not available; no risk conclusion">N/A</span></div></td></tr>`;
+        }).join('')}</tbody></table></div>`;
+    }
+    const holderMeta=data.holders_snapshot||{};
+    const holderFresh=holderMeta.fetched_at_utc?`Collected ${esc(age(holderMeta.fetched_at_utc))}${holderMeta.stale?' · STALE SNAPSHOT':''}`:'No saved holder snapshot yet';
+
     let technical = '<div class="asset-page-empty">No saved technical snapshot is available for this underlying.</div>';
     if (tech) {
       const status = technicalStatus(tech.status);
@@ -221,6 +303,7 @@
       ['Underlying metrics fetch', fresh.underlying_metrics_fetch_utc],
       ['Technical candle', fresh.technical_candle_utc],
       ['Technical API fetch', fresh.technical_fetch_utc],
+      ['Holder snapshot collection', holderMeta.fetched_at_utc],
     ];
 
     root.innerHTML = `
@@ -266,6 +349,12 @@
         <p class="asset-page-rep-note">Token / share ratio is provider metadata, not a provider-vs-underlying price ratio. Saved token prices are shown separately.</p>
       </section>
 
+      <section class="asset-page-section asset-wallet-stock-panel">
+        <div class="asset-skill-heading"><h2>Token &amp; Security Overview</h2><span class="asset-skill-provider">Binance Wallet Skills</span></div>
+        ${overview}
+        <p class="asset-page-rep-note">Binance-reported, contract-specific holder counts, ranks and concentration · ${holderFresh}. Missing KYC holders are not zero. No cross-provider holder totals or combined security ratings. Audit N/A means unsupported or unavailable, not low risk.</p>
+      </section>
+
       <section class="asset-page-section">
         <h2>Technical snapshot</h2>
         ${technical}
@@ -283,6 +372,7 @@
     loading.hidden = true;
     error.hidden = true;
     root.hidden = false;
+    updateAuditCells();
   }
 
   async function load(options = {}) {

@@ -15,8 +15,8 @@ header("Content-Security-Policy: default-src 'none'; style-src 'self'; script-sr
 <link rel="stylesheet" href="css/rwa-chat.css?v=20261008-cooldown">
 <link rel="stylesheet" href="css/legal.css?v=20261008-legal">
 <link rel="stylesheet" href="css/site-nav-assets.css?v=20261009-sharednav1">
-<link rel="stylesheet" href="css/dashboard.css?v=20261008-tabs6">
-<script src="js/dashboard.js?v=20261008-tabs6" defer></script>
+<link rel="stylesheet" href="css/dashboard.css?v=20261010-mostheldlogo1">
+<script src="js/dashboard.js?v=20261010-mostheldlogo1" defer></script>
 <script src="js/site-nav.js?v=20261007-nav" defer></script>
 <link rel="stylesheet" href="css/about-context-links.css?v=20261009-links-v2"><link rel="stylesheet" href="css/site-layout.css?v=20261010-layout2"></head>
 <body>

@@ -267,6 +267,51 @@ try {
         ];
     }
 
+    // One atomic read statement binds the published snapshot and contract rows.
+    // KYC/holders missing from the ranking remain NULL, not zero.
+    $holderSnapshotAt = null;
+    $holderSnapshotStale = true;
+    try {
+        $addresses = array_values(array_unique(array_filter(
+            array_column($representations, 'contract_address'),
+            static fn($v) => is_string($v) && preg_match('/\A0x[a-f0-9]{40}\z/', $v)
+        )));
+        if ($addresses) {
+            $marks = implode(',', array_fill(0, count($addresses), '?'));
+            $holderStmt = $db->prepare("SELECT m.fetched_at_utc, r.contract_address, r.provider,
+                   r.token_symbol, r.underlying_ticker, r.holders, r.kyc_holders, r.holders_top10_pct,
+                   r.position holder_rank, m.received_total holder_rank_total
+                FROM rwa_wallet_stock_rank_meta m
+                LEFT JOIN rwa_wallet_stock_rank_rows r ON r.snapshot_id=m.snapshot_id
+                    AND r.contract_address IN ($marks)
+                WHERE m.id=1");
+            $holderStmt->execute($addresses);
+            $byContract = [];
+            $fetchedAt = null;
+            foreach ($holderStmt as $row) {
+                $fetchedAt = $row['fetched_at_utc'] ?? null;
+                if (!empty($row['contract_address'])) $byContract[$row['contract_address']] = $row;
+            }
+            $holderSnapshotAt = utcIso($fetchedAt);
+            $holderTimestamp = is_string($fetchedAt) ? strtotime($fetchedAt.' UTC') : false;
+            $holderSnapshotStale = $holderTimestamp === false || (time() - $holderTimestamp) > 5400;
+            foreach ($representations as &$rep) {
+                $h = $byContract[$rep['contract_address']] ?? null;
+                if (!$h || $h['provider'] !== $rep['provider'] || $h['token_symbol'] !== $rep['symbol']
+                    || $h['underlying_ticker'] !== $ticker) continue;
+                $rep['holders'] = intOrNull($h['holders']);
+                $rep['kyc_holders'] = intOrNull($h['kyc_holders']);
+                $rep['holders_top10_pct'] = floatOrNull($h['holders_top10_pct']);
+                $rep['holder_rank'] = intOrNull($h['holder_rank']);
+                $rep['holder_rank_total'] = intOrNull($h['holder_rank_total']);
+            }
+            unset($rep);
+        }
+    } catch (Throwable $holderError) {
+        // New optional tables may not yet be deployed; never break existing Asset Detail.
+        error_log('[asset-card-api] optional holder snapshot unavailable: ' . $holderError->getMessage());
+    }
+
     usort($representations, function (array $a, array $b): int {
         $cmp = providerRank($a['provider']) <=> providerRank($b['provider']);
         return $cmp !== 0 ? $cmp : strnatcasecmp((string)$a['symbol'], (string)$b['symbol']);
@@ -371,6 +416,7 @@ try {
                 'volume_24h_rank_total' => intOrNull($rank['volume_24h_rank_total'] ?? null) ?? 0,
             ],
             'representations' => $representations,
+            'holders_snapshot' => ['fetched_at_utc'=>$holderSnapshotAt, 'stale'=>$holderSnapshotStale],
             'technical' => $technical,
             'freshness' => [
                 'price_source_utc' => $display['price_source_time'] ?? null,
