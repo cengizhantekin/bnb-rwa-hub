@@ -72,10 +72,6 @@ Do **not** run the integration scripts against a live API/wallet without reviewi
 
 Live operations should be distinguished from these offline tests; the new stock-rank collector must not run without its database migration and an explicitly reviewed schedule. See [Deployment](docs/DEPLOYMENT.md).
 
-## Development history
-
-Engineering decisions and the chronological development log are maintained separately in [bnb-rwa-hub-devex](https://github.com/cengizhantekin/bnb-rwa-hub-devex).
-
 ## License
 
 No software license has been selected yet. All rights are reserved unless a license is added.
